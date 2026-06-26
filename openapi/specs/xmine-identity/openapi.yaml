@@ -1,0 +1,496 @@
+openapi: "3.0.0"
+info:
+  title: xmine-identity
+  version: "1.0.0"
+
+paths:
+  /health:
+    get:
+      operationId: Health
+      summary: Health check
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Service degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: Login
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/refresh:
+    post:
+      operationId: Refresh
+      summary: Exchange a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/logout:
+    post:
+      operationId: Logout
+      summary: Revoke a refresh token
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/me:
+    get:
+      operationId: Me
+      summary: Get current authenticated player info
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Player info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link/code:
+    post:
+      operationId: GenerateLinkCode
+      summary: Generate a link code for a player and provider
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateCodeRequest"
+      responses:
+        "200":
+          description: Code generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateCodeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link/confirm:
+    post:
+      operationId: ConfirmLink
+      summary: Confirm a link code with a provider account
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmLinkRequest"
+      responses:
+        "200":
+          description: Link confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Code expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link/login:
+    post:
+      operationId: LoginByProvider
+      summary: Exchange a confirmed provider id for a token pair
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderLoginRequest"
+      responses:
+        "200":
+          description: Token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link:
+    delete:
+      operationId: Unlink
+      summary: Remove a link between a player and a provider
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlinkRequest"
+      responses:
+        "200":
+          description: Unlinked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/links/{uuid}:
+    get:
+      operationId: ListLinks
+      summary: List providers linked to a player
+      security:
+        - internalToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Linked providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinksListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link/{uuid}/{provider}:
+    get:
+      operationId: ResolveLink
+      summary: Resolve a player's provider id for a given provider
+      security:
+        - internalToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Provider id resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderIDResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /internal/link/by-provider/{provider}/{provider_id}:
+    get:
+      operationId: FindPlayerByProvider
+      summary: Find the player linked to a provider account
+      security:
+        - internalToken: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: provider_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    internalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, db]
+      properties:
+        status:
+          type: string
+        db:
+          type: boolean
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+
+    TokenResponse:
+      type: object
+      required: [access_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+
+    StatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    LinkInfo:
+      type: object
+      required: [provider, linked_at]
+      properties:
+        provider:
+          type: string
+        linked_at:
+          type: string
+          format: date-time
+
+    MeResponse:
+      type: object
+      required: [uuid, username, links]
+      properties:
+        uuid:
+          type: string
+        username:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkInfo"
+
+    GenerateCodeRequest:
+      type: object
+      properties:
+        player_uuid:
+          type: string
+        provider:
+          type: string
+
+    GenerateCodeResponse:
+      type: object
+      required: [code, expires_in]
+      properties:
+        code:
+          type: string
+        expires_in:
+          type: integer
+
+    ConfirmLinkRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        provider:
+          type: string
+        provider_id:
+          type: string
+
+    ProviderLoginRequest:
+      type: object
+      properties:
+        provider:
+          type: string
+        provider_id:
+          type: string
+
+    UnlinkRequest:
+      type: object
+      properties:
+        player_uuid:
+          type: string
+        provider:
+          type: string
+
+    PlayerResponse:
+      type: object
+      required: [player_uuid, username]
+      properties:
+        player_uuid:
+          type: string
+        username:
+          type: string
+
+    LinksListResponse:
+      type: object
+      required: [links]
+      properties:
+        links:
+          type: array
+          items:
+            type: string
+
+    ProviderIDResponse:
+      type: object
+      required: [provider_id]
+      properties:
+        provider_id:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
