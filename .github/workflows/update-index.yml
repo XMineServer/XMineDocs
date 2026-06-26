@@ -1,0 +1,47 @@
+name: Update spec index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'openapi/specs/**'
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild specs/index.json
+        run: |
+          echo "[]" > specs/index.json
+          for dir in openapi/specs/*/; do
+            [ -f "$dir/openapi.yaml" ] || continue
+            id=$(basename "$dir")
+            # Читаем title из openapi.yaml
+            name=$(grep -m1 "^  title:" "$dir/openapi.yaml" | sed 's/.*title: *//' | tr -d '"')
+            [ -z "$name" ] && name="$id"
+            entry="{\"id\":\"$id\",\"name\":\"$name\",\"url\":\"openapi/specs/$id/openapi.yaml\"}"
+            # Добавляем в массив
+            python3 -c "
+          import json, sys
+          with open('specs/index.json') as f:
+              data = json.load(f)
+          data.append(json.loads(sys.argv[1]))
+          with open('specs/index.json', 'w') as f:
+              json.dump(data, f, indent=2)
+          " "$entry"
+          done
+          echo "Built index:"
+          cat specs/index.json
+
+      - name: Commit updated index
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add specs/index.json
+          git diff --staged --quiet || git commit -m "chore: rebuild spec index"
+          git push
