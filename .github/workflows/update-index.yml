@@ -17,7 +17,7 @@ jobs:
 
       - name: Rebuild specs/index.json
         run: |
-          echo "[]" > specs/index.json
+          echo "[]" > openapi/specs/index.json
           for dir in openapi/specs/*/; do
             [ -f "$dir/openapi.yaml" ] || continue
             id=$(basename "$dir")
