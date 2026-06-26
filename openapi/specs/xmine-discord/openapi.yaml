@@ -1,0 +1,139 @@
+openapi: "3.0.0"
+info:
+  title: discord-service
+  version: "1.0.0"
+
+paths:
+  /auth/discord/redirect:
+    get:
+      operationId: OAuthRedirect
+      summary: Start the Discord OAuth2 link/login flow
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [link, login]
+      responses:
+        "302":
+          description: Redirect to Discord's authorize URL
+          headers:
+            Location:
+              schema:
+                type: string
+        "400":
+          description: Missing or invalid code/mode
+        "500":
+          description: Internal error
+
+  /auth/discord/callback:
+    get:
+      operationId: OAuthCallback
+      summary: Discord OAuth2 callback, completes the link/login flow
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the site's success/error page
+          headers:
+            Location:
+              schema:
+                type: string
+
+  /discord/me:
+    get:
+      operationId: DiscordMe
+      summary: Get the caller's linked Discord profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Discord profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Player has no Discord link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      operationId: GetHealth
+      summary: Liveness of the Gateway connection and Kafka consumer group
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    MeResponse:
+      type: object
+      required: [discord_id, username, global_name, avatar_url]
+      properties:
+        discord_id:
+          type: string
+        username:
+          type: string
+        global_name:
+          type: string
+        avatar_url:
+          type: string
+
+    HealthResponse:
+      type: object
+      required: [status, gateway, kafka]
+      properties:
+        status:
+          type: string
+        gateway:
+          type: boolean
+        kafka:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
