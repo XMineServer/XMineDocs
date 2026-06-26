@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'openapi/specs/**'
+  workflow_dispatch:
 
 jobs:
   update-index:
