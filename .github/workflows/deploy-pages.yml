@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Update spec index"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
