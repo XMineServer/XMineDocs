@@ -5,19 +5,20 @@
 ## Структура
 
 ```
-specs/
-  index.json              # реестр сервисов (генерируется автоматически)
-  identity-service/
-    openapi.yaml
-  economy-service/
-    openapi.yaml
-  ...
-index.html                # Swagger UI портал
+openapi/ 
+   specs/
+      index.json             # реестр сервисов (генерируется автоматически)
+      identity-service/
+         openapi.yaml
+      economy-service/
+         openapi.yaml
+      ...
+   index.html                # Swagger UI портал
 ```
 
 ## Как добавить новый сервис
 
-1. Скопируй `service-workflow-template.yml` в свой репозиторий:
+1. Скопируй `openapi/service-workflow-template.yml` в свой репозиторий:
    ```
    .github/workflows/publish-spec.yml
    ```
