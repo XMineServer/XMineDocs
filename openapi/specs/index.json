@@ -2,21 +2,21 @@
   {
     "id": "litebans-api",
     "name": "litebans-api",
-    "url": "openapi/specs/litebans-api/openapi.yaml"
+    "url": "specs/litebans-api/openapi.yaml"
   },
   {
     "id": "xmine-authority",
     "name": "authority-service",
-    "url": "openapi/specs/xmine-authority/openapi.yaml"
+    "url": "specs/xmine-authority/openapi.yaml"
   },
   {
     "id": "xmine-discord",
     "name": "discord-service",
-    "url": "openapi/specs/xmine-discord/openapi.yaml"
+    "url": "specs/xmine-discord/openapi.yaml"
   },
   {
     "id": "xmine-identity",
     "name": "xmine-identity",
-    "url": "openapi/specs/xmine-identity/openapi.yaml"
+    "url": "specs/xmine-identity/openapi.yaml"
   }
 ]
