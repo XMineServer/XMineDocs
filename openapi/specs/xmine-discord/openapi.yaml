@@ -3,53 +3,67 @@ info:
   title: discord-service
   version: "1.0.0"
 
+tags:
+  - name: OAuth
+    description: HTTP-flow привязки/входа через Discord OAuth2.
+  - name: Discord
+    description: Привязанный Discord-профиль текущего пользователя.
+
 paths:
   /auth/discord/redirect:
     get:
       operationId: OAuthRedirect
-      summary: Start the Discord OAuth2 link/login flow
+      tags:
+        - OAuth
+      summary: Запуск OAuth2-flow привязки/входа через Discord
       parameters:
         - name: code
           in: query
           required: true
+          description: Код привязки, выданный Identity Service.
           schema:
             type: string
         - name: mode
           in: query
           required: true
+          description: "Режим использования кода: привязка нового аккаунта (`link`) или вход по существующей привязке (`login`)."
           schema:
             type: string
             enum: [link, login]
       responses:
         "302":
-          description: Redirect to Discord's authorize URL
+          description: Редирект на authorize-страницу Discord
           headers:
             Location:
               schema:
                 type: string
         "400":
-          description: Missing or invalid code/mode
+          description: Отсутствует или некорректен code/mode
         "500":
-          description: Internal error
+          description: Внутренняя ошибка
 
   /auth/discord/callback:
     get:
       operationId: OAuthCallback
-      summary: Discord OAuth2 callback, completes the link/login flow
+      tags:
+        - OAuth
+      summary: Callback Discord OAuth2, завершающий flow привязки/входа
       parameters:
         - name: state
           in: query
           required: true
+          description: Непрозрачный state-идентификатор, возвращённый Discord, связывающий callback с исходным запросом `OAuthRedirect`.
           schema:
             type: string
         - name: code
           in: query
           required: false
+          description: Код авторизации Discord OAuth2; отсутствует, если пользователь отказал в доступе.
           schema:
             type: string
       responses:
         "302":
-          description: Redirect to the site's success/error page
+          description: Редирект на страницу успеха/ошибки сайта
           headers:
             Location:
               schema:
@@ -58,46 +72,36 @@ paths:
   /discord/me:
     get:
       operationId: DiscordMe
-      summary: Get the caller's linked Discord profile
+      tags:
+        - Discord
+      summary: Получить привязанный Discord-профиль текущего пользователя
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Discord profile
+          description: Discord-профиль
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MeResponse"
         "401":
-          description: Missing or invalid bearer token
+          description: Отсутствует или невалиден bearer-токен
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Player has no Discord link
+          description: У игрока нет привязки Discord
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Internal error
+          description: Внутренняя ошибка
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-  /health:
-    get:
-      operationId: GetHealth
-      summary: Liveness of the Gateway connection and Kafka consumer group
-      responses:
-        "200":
-          description: Health status
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
 
 components:
   securitySchemes:
@@ -105,6 +109,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT, выданный Identity Service (RS256). Используется для идентификации игрока.
 
   schemas:
     MeResponse:
@@ -113,23 +118,16 @@ components:
       properties:
         discord_id:
           type: string
+          description: Discord snowflake id привязанного аккаунта.
         username:
           type: string
+          description: Discord-юзернейм (без дискриминатора).
         global_name:
           type: string
+          description: Отображаемое имя Discord, общее для всех серверов.
         avatar_url:
           type: string
-
-    HealthResponse:
-      type: object
-      required: [status, gateway, kafka]
-      properties:
-        status:
-          type: string
-        gateway:
-          type: boolean
-        kafka:
-          type: boolean
+          description: URL аватара пользователя в Discord.
 
     ErrorResponse:
       type: object
@@ -137,3 +135,4 @@ components:
       properties:
         error:
           type: string
+          description: Машиночитаемый код ошибки.
