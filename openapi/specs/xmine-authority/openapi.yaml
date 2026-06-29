@@ -3,16 +3,22 @@ info:
   title: authority-service
   version: "1.0.0"
 
+tags:
+  - name: Rank
+    description: Разрешение ранга/прав игрока через LuckPerms.
+
 paths:
   /rank:
     get:
       operationId: GetOwnRank
-      summary: Get the rank of the player identified by the JWT bearer token
+      tags:
+        - Rank
+      summary: Получить ранг игрока по JWT bearer-токену
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Success
+          description: Успех
           content:
             application/json:
               schema:
@@ -25,18 +31,21 @@ paths:
   /rank/{uuid}:
     get:
       operationId: GetRankByUUID
-      summary: Get the rank of a player by UUID (internal callers only)
+      tags:
+        - Rank
+      summary: Получить ранг игрока по UUID (только для внутренних вызовов)
       security:
         - internalToken: []
       parameters:
         - name: uuid
           in: path
           required: true
+          description: UUID игрока.
           schema:
             type: string
       responses:
         "200":
-          description: Success
+          description: Успех
           content:
             application/json:
               schema:
@@ -48,34 +57,18 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /health:
-    get:
-      operationId: GetHealth
-      summary: Health check
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-        "503":
-          description: Degraded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT, выданный Identity Service (RS256). Используется для идентификации игрока.
     internalToken:
       type: apiKey
       in: header
       name: X-Internal-Token
+      description: Общий секрет для доверенных серверных вызовов от других сервисов XMine.
 
   schemas:
     Group:
@@ -84,12 +77,15 @@ components:
       properties:
         name:
           type: string
+          description: Название группы LuckPerms.
         weight:
           type: integer
+          description: Вес группы LuckPerms; при принадлежности к нескольким группам выигрывает группа с большим весом.
         expires_at:
           type: integer
           format: int64
           nullable: true
+          description: Unix-время (в секундах), когда истекает участие в группе, либо null, если группа постоянная.
 
     Rank:
       type: object
@@ -97,23 +93,17 @@ components:
       properties:
         uuid:
           type: string
+          description: UUID игрока.
         permissions:
           type: array
           items:
             type: string
+          description: Разрешённые permission-ноды, действующие для игрока.
         groups:
           type: array
           items:
             $ref: "#/components/schemas/Group"
-
-    HealthStatus:
-      type: object
-      required: [status, luckperms]
-      properties:
-        status:
-          type: string
-        luckperms:
-          type: boolean
+          description: Группы LuckPerms, в которых состоит игрок.
 
     ErrorResponse:
       type: object
@@ -121,22 +111,23 @@ components:
       properties:
         error:
           type: string
+          description: Машиночитаемый код ошибки.
 
   responses:
     Unauthorized:
-      description: Unauthorized
+      description: Не авторизован
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
-      description: Not found
+      description: Не найдено
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     ServiceUnavailable:
-      description: Service unavailable
+      description: Сервис недоступен
       content:
         application/json:
           schema:
