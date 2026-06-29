@@ -2,30 +2,22 @@ openapi: "3.0.0"
 info:
   title: xmine-identity
   version: "1.0.0"
+  description: Сервис входа по логину/паролю и привязки Minecraft-игроков к внешним провайдерам (Discord/VK/Telegram).
+
+tags:
+  - name: Auth
+    description: Публичный вход по логину/паролю и управление токенами сессии.
+  - name: Account Linking
+    description: Привязка Minecraft-игроков к аккаунтам внешних провайдеров (защищено X-Internal-Token).
 
 paths:
-  /health:
-    get:
-      operationId: Health
-      summary: Health check
-      responses:
-        "200":
-          description: Service healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-        "503":
-          description: Service degraded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-
   /auth/login:
     post:
       operationId: Login
-      summary: Login with username and password
+      tags:
+        - Auth
+      summary: Вход по логину и паролю
+      description: Аутентифицирует игрока по Minecraft-логину и паролю и выдаёт пару токенов.
       requestBody:
         required: true
         content:
@@ -34,7 +26,7 @@ paths:
               $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
-          description: Token pair issued
+          description: Пара токенов выдана
           content:
             application/json:
               schema:
@@ -42,9 +34,13 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Неверный логин или пароль (один и тот же ответ в обоих случаях).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
-          description: Too many attempts
+          description: Превышен лимит попыток входа (5 в минуту на пару IP+логин).
           content:
             application/json:
               schema:
@@ -55,7 +51,10 @@ paths:
   /auth/refresh:
     post:
       operationId: Refresh
-      summary: Exchange a refresh token for a new access token
+      tags:
+        - Auth
+      summary: Обновление access-токена по refresh-токену
+      description: Выдаёт новый access-токен по refresh-токену. Сам refresh-токен не изменяется и не продлевается.
       requestBody:
         required: true
         content:
@@ -64,7 +63,7 @@ paths:
               $ref: "#/components/schemas/RefreshRequest"
       responses:
         "200":
-          description: New access token issued
+          description: Новый access-токен выдан
           content:
             application/json:
               schema:
@@ -72,14 +71,21 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          description: Refresh-токен невалиден, отозван или истёк.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
   /auth/logout:
     post:
       operationId: Logout
-      summary: Revoke a refresh token
+      tags:
+        - Auth
+      summary: Отзыв refresh-токена
+      description: Отзывает refresh-токен. Уже выданные access-токены остаются действительными до истечения своего срока жизни.
       security:
         - bearerAuth: []
       requestBody:
@@ -90,25 +96,30 @@ paths:
               $ref: "#/components/schemas/RefreshRequest"
       responses:
         "200":
-          description: Logged out
+          description: Выход выполнен
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatusResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
 
   /auth/me:
     get:
       operationId: Me
-      summary: Get current authenticated player info
+      tags:
+        - Auth
+      summary: Профиль текущего игрока
+      description: Возвращает профиль аутентифицированного игрока и список привязанных провайдеров (без provider_id).
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Player info
+          description: Профиль игрока
           content:
             application/json:
               schema:
@@ -121,7 +132,10 @@ paths:
   /internal/link/code:
     post:
       operationId: GenerateLinkCode
-      summary: Generate a link code for a player and provider
+      tags:
+        - Account Linking
+      summary: Генерация кода привязки
+      description: Генерирует одноразовый код для привязки игрока к провайдеру.
       security:
         - internalToken: []
       requestBody:
@@ -132,7 +146,7 @@ paths:
               $ref: "#/components/schemas/GenerateCodeRequest"
       responses:
         "200":
-          description: Code generated
+          description: Код сгенерирован
           content:
             application/json:
               schema:
@@ -145,7 +159,10 @@ paths:
   /internal/link/confirm:
     post:
       operationId: ConfirmLink
-      summary: Confirm a link code with a provider account
+      tags:
+        - Account Linking
+      summary: Подтверждение кода привязки
+      description: Подтверждает код привязки идентификатором аккаунта у провайдера и завершает привязку.
       security:
         - internalToken: []
       requestBody:
@@ -156,7 +173,7 @@ paths:
               $ref: "#/components/schemas/ConfirmLinkRequest"
       responses:
         "200":
-          description: Link confirmed
+          description: Привязка подтверждена
           content:
             application/json:
               schema:
@@ -164,15 +181,19 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Код не найден.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Conflict
+          description: provider_id уже привязан к другому игроку, либо у игрока уже есть привязка этого провайдера.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "410":
-          description: Code expired or already used
+          description: Код истёк или уже использован.
           content:
             application/json:
               schema:
@@ -183,7 +204,10 @@ paths:
   /internal/link/login:
     post:
       operationId: LoginByProvider
-      summary: Exchange a confirmed provider id for a token pair
+      tags:
+        - Account Linking
+      summary: Вход по подтверждённой привязке провайдера
+      description: Выдаёт пару токенов по provider_id подтверждённой привязки (аналог `/auth/login`, но без логина и пароля).
       security:
         - internalToken: []
       requestBody:
@@ -194,7 +218,7 @@ paths:
               $ref: "#/components/schemas/ProviderLoginRequest"
       responses:
         "200":
-          description: Token pair issued
+          description: Пара токенов выдана
           content:
             application/json:
               schema:
@@ -202,25 +226,37 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Привязки с таким provider_id нет.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
   /internal/link:
     delete:
       operationId: Unlink
-      summary: Remove a link between a player and a provider
+      tags:
+        - Account Linking
+      summary: Удаление привязки
+      description: Удаляет привязку игрока к провайдеру. Если оба query-параметра отсутствуют, дополнительно принимается устаревшее тело запроса `UnlinkRequest`.
       security:
         - internalToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UnlinkRequest"
+      parameters:
+        - name: player_uuid
+          in: query
+          description: UUID игрока.
+          schema:
+            type: string
+        - name: provider
+          in: query
+          description: Идентификатор провайдера.
+          schema:
+            type: string
       responses:
         "200":
-          description: Unlinked
+          description: Привязка удалена
           content:
             application/json:
               schema:
@@ -228,25 +264,33 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Привязки не было.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
   /internal/links/{uuid}:
     get:
       operationId: ListLinks
-      summary: List providers linked to a player
+      tags:
+        - Account Linking
+      summary: Список привязанных провайдеров
+      description: Возвращает список провайдеров, привязанных к игроку (только имена, без provider_id).
       security:
         - internalToken: []
       parameters:
         - name: uuid
           in: path
           required: true
+          description: UUID игрока.
           schema:
             type: string
       responses:
         "200":
-          description: Linked providers
+          description: Привязанные провайдеры
           content:
             application/json:
               schema:
@@ -259,23 +303,28 @@ paths:
   /internal/link/{uuid}/{provider}:
     get:
       operationId: ResolveLink
-      summary: Resolve a player's provider id for a given provider
+      tags:
+        - Account Linking
+      summary: Резолв provider_id игрока
+      description: Возвращает provider_id игрока для указанного провайдера.
       security:
         - internalToken: []
       parameters:
         - name: uuid
           in: path
           required: true
+          description: UUID игрока.
           schema:
             type: string
         - name: provider
           in: path
           required: true
+          description: "Идентификатор провайдера (`telegram`, `discord`, `vk`, ...)."
           schema:
             type: string
       responses:
         "200":
-          description: Provider id resolved
+          description: provider_id найден
           content:
             application/json:
               schema:
@@ -283,30 +332,39 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Привязки нет.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
   /internal/link/by-provider/{provider}/{provider_id}:
     get:
       operationId: FindPlayerByProvider
-      summary: Find the player linked to a provider account
+      tags:
+        - Account Linking
+      summary: Поиск игрока по аккаунту провайдера
+      description: Возвращает игрока (UUID и текущий ник), привязанного к указанному аккаунту провайдера.
       security:
         - internalToken: []
       parameters:
         - name: provider
           in: path
           required: true
+          description: Идентификатор провайдера.
           schema:
             type: string
         - name: provider_id
           in: path
           required: true
+          description: Id игрока у провайдера (Telegram chat id, Discord snowflake и т.п.).
           schema:
             type: string
       responses:
         "200":
-          description: Player found
+          description: Игрок найден
           content:
             application/json:
               schema:
@@ -314,7 +372,11 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Привязки нет.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -324,34 +386,30 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT, выданный Identity при логине. Используется для идентификации игрока.
     internalToken:
       type: apiKey
       in: header
       name: X-Internal-Token
+      description: Общий секрет для доверенных серверных вызовов от других сервисов XMine.
 
   schemas:
-    HealthStatus:
-      type: object
-      required: [status, db]
-      properties:
-        status:
-          type: string
-        db:
-          type: boolean
-
     LoginRequest:
       type: object
       properties:
         username:
           type: string
+          description: Minecraft-логин игрока.
         password:
           type: string
+          description: Пароль аккаунта.
 
     RefreshRequest:
       type: object
       properties:
         refresh_token:
           type: string
+          description: Refresh-токен, ранее выданный `Login` или `LoginByProvider`.
 
     TokenResponse:
       type: object
@@ -359,10 +417,13 @@ components:
       properties:
         access_token:
           type: string
+          description: "Короткоживущий JWT для заголовка `Authorization: Bearer` в последующих запросах."
         refresh_token:
           type: string
+          description: Долгоживущий токен для получения нового access-токена через `Refresh`.
         expires_in:
           type: integer
+          description: Время жизни access-токена в секундах.
 
     StatusResponse:
       type: object
@@ -370,10 +431,12 @@ components:
       properties:
         status:
           type: string
+          description: Всегда `"ok"` при успехе.
 
     LinkInfo:
       type: object
       required: [provider, linked_at]
+      description: Факт привязки провайдера, без provider_id.
       properties:
         provider:
           type: string
@@ -384,23 +447,29 @@ components:
     MeResponse:
       type: object
       required: [uuid, username, links]
+      description: Не содержит provider_id — для получения id игрока у провайдера используйте `ResolveLink`.
       properties:
         uuid:
           type: string
+          description: UUID игрока.
         username:
           type: string
+          description: Текущий Minecraft-ник.
         links:
           type: array
           items:
             $ref: "#/components/schemas/LinkInfo"
+          description: Провайдеры, привязанные к игроку.
 
     GenerateCodeRequest:
       type: object
       properties:
         player_uuid:
           type: string
+          description: UUID игрока, запрашивающего код.
         provider:
           type: string
+          description: "Провайдер, под который будет подтверждён код (`telegram`, `discord`, `vk`, ...)."
 
     GenerateCodeResponse:
       type: object
@@ -408,34 +477,45 @@ components:
       properties:
         code:
           type: string
+          description: Одноразовый код привязки, показывается игроку.
         expires_in:
           type: integer
+          description: Время жизни кода в секундах.
 
     ConfirmLinkRequest:
       type: object
       properties:
         code:
           type: string
+          description: Код привязки, сгенерированный `GenerateLinkCode`.
         provider:
           type: string
+          description: Провайдер, подтверждающий код.
         provider_id:
           type: string
+          description: Id игрока у провайдера (например, Telegram chat id, Discord snowflake).
 
     ProviderLoginRequest:
       type: object
       properties:
         provider:
           type: string
+          description: Провайдер, через который выполняется вход.
         provider_id:
           type: string
+          description: Id игрока у провайдера, подтверждённый ранее через `ConfirmLink`.
 
     UnlinkRequest:
       type: object
+      deprecated: true
+      description: Устаревшая форма тела запроса для `DELETE /internal/link`; используется только если query-параметры `player_uuid`/`provider` не переданы. Используйте query-параметры.
       properties:
         player_uuid:
           type: string
+          description: UUID игрока для отвязки.
         provider:
           type: string
+          description: Провайдер, для которого удаляется привязка.
 
     PlayerResponse:
       type: object
@@ -443,8 +523,10 @@ components:
       properties:
         player_uuid:
           type: string
+          description: UUID игрока.
         username:
           type: string
+          description: Текущий Minecraft-ник.
 
     LinksListResponse:
       type: object
@@ -454,6 +536,7 @@ components:
           type: array
           items:
             type: string
+          description: Имена провайдеров, привязанных к игроку (без provider_id).
 
     ProviderIDResponse:
       type: object
@@ -461,6 +544,7 @@ components:
       properties:
         provider_id:
           type: string
+          description: Id игрока у запрошенного провайдера.
 
     ErrorResponse:
       type: object
@@ -468,28 +552,29 @@ components:
       properties:
         error:
           type: string
+          description: Машиночитаемый код ошибки.
 
   responses:
     BadRequest:
-      description: Bad request
+      description: Некорректный запрос
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
-      description: Not found
+      description: Не найдено
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Unauthorized:
-      description: Unauthorized
+      description: Не авторизован
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     InternalError:
-      description: Internal server error
+      description: Внутренняя ошибка сервера
       content:
         application/json:
           schema:
