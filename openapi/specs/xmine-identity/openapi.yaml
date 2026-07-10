@@ -129,6 +129,35 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /auth/link/code:
+    post:
+      operationId: CreateLinkCode
+      tags:
+        - Auth
+      summary: Получение кода привязки для текущего игрока
+      description: Генерирует одноразовый код привязки для аутентифицированного игрока (UUID берётся из access-токена, а не из тела запроса).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkCodeRequest"
+      responses:
+        "200":
+          description: Код сгенерирован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateCodeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /internal/link/code:
     post:
       operationId: GenerateLinkCode
@@ -467,6 +496,13 @@ components:
         player_uuid:
           type: string
           description: UUID игрока, запрашивающего код.
+        provider:
+          type: string
+          description: "Провайдер, под который будет подтверждён код (`telegram`, `discord`, `vk`, ...)."
+
+    CreateLinkCodeRequest:
+      type: object
+      properties:
         provider:
           type: string
           description: "Провайдер, под который будет подтверждён код (`telegram`, `discord`, `vk`, ...)."
