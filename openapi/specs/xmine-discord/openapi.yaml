@@ -69,7 +69,7 @@ paths:
               schema:
                 type: string
 
-  /api/discord/v1/me:
+  /api/discord/v1/player/me:
     get:
       operationId: DiscordMe
       tags:
