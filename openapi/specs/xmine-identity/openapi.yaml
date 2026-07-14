@@ -11,7 +11,7 @@ tags:
     description: Привязка Minecraft-игроков к аккаунтам внешних провайдеров (защищено X-Internal-Token).
 
 paths:
-  /auth/login:
+  /api/identity/v1/auth/login:
     post:
       operationId: Login
       tags:
@@ -48,7 +48,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/refresh:
+  /api/identity/v1/auth/refresh:
     post:
       operationId: Refresh
       tags:
@@ -79,7 +79,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/logout:
+  /api/identity/v1/auth/logout:
     post:
       operationId: Logout
       tags:
@@ -108,7 +108,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/me:
+  /api/identity/v1/me:
     get:
       operationId: Me
       tags:
@@ -129,7 +129,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/link/code:
+  /api/identity/v1/link/code:
     post:
       operationId: CreateLinkCode
       tags:
@@ -158,7 +158,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link/code:
+  /api-internal/identity/v1/link/code:
     post:
       operationId: GenerateLinkCode
       tags:
@@ -185,7 +185,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link/confirm:
+  /api-internal/identity/v1/link/confirm:
     post:
       operationId: ConfirmLink
       tags:
@@ -230,7 +230,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link/login:
+  /api-internal/identity/v1/link/login:
     post:
       operationId: LoginByProvider
       tags:
@@ -263,7 +263,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link:
+  /api-internal/identity/v1/link:
     delete:
       operationId: Unlink
       tags:
@@ -301,7 +301,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/links/{uuid}:
+  /api-internal/identity/v1/links/{uuid}:
     get:
       operationId: ListLinks
       tags:
@@ -329,7 +329,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link/{uuid}/{provider}:
+  /api-internal/identity/v1/link/{uuid}/{provider}:
     get:
       operationId: ResolveLink
       tags:
@@ -369,7 +369,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /internal/link/by-provider/{provider}/{provider_id}:
+  /api-internal/identity/v1/link/by-provider/{provider}/{provider_id}:
     get:
       operationId: FindPlayerByProvider
       tags:
