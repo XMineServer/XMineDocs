@@ -8,7 +8,7 @@ tags:
     description: Разрешение ранга/прав игрока через LuckPerms.
 
 paths:
-  /api/authority/v1/rank:
+  /api/authority/v1/player/rank:
     get:
       operationId: GetOwnRank
       tags:
