@@ -8,7 +8,7 @@ tags:
     description: Разрешение ранга/прав игрока через LuckPerms.
 
 paths:
-  /rank:
+  /api/authority/v1/rank:
     get:
       operationId: GetOwnRank
       tags:
@@ -28,7 +28,7 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /rank/{uuid}:
+  /api-internal/authority/v1/rank/{uuid}:
     get:
       operationId: GetRankByUUID
       tags:
