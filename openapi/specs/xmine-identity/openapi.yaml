@@ -108,6 +108,112 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/identity/v1/auth/password/reset:
+    post:
+      operationId: RequestPasswordReset
+      tags:
+        - Auth
+      summary: Запрос сброса пароля по нику
+      description: >
+        Инициирует сброс пароля для указанного Minecraft-ника. Токен сброса
+        отправляется в приоритетный привязанный аккаунт игрока (например,
+        Discord) через брокер сообщений — ответ этого метода не сообщает,
+        существует ли аккаунт и был ли токен фактически отправлен. Действует
+        кулдаун на повторный запрос для одного ника.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestPasswordResetRequest"
+      responses:
+        "200":
+          description: Запрос принят. Не гарантирует, что токен был кому-то отправлен.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          description: Превышен кулдаун повторного запроса сброса пароля для этого ника.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/identity/v1/auth/password/reset/confirm:
+    post:
+      operationId: ConfirmPasswordReset
+      tags:
+        - Auth
+      summary: Подтверждение сброса пароля по токену
+      description: Устанавливает новый пароль по токену сброса, полученному в приоритетном привязанном аккаунте, и сразу выдаёт пару токенов сессии.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmPasswordResetRequest"
+      responses:
+        "200":
+          description: Пароль изменён, пара токенов выдана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Токен сброса не найден.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: Токен сброса истёк или уже использован.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/identity/v1/auth/password/change:
+    post:
+      operationId: ChangePassword
+      tags:
+        - Auth
+      summary: Смена пароля текущим игроком
+      description: Меняет пароль аутентифицированного игрока после проверки текущего пароля.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: Пароль изменён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Не авторизован, либо неверный текущий пароль.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/identity/v1/player/me:
     get:
       operationId: Me
@@ -409,6 +515,34 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api-internal/identity/v1/acccount/{uuid}/password/regenerate:
+    post:
+      operationId: RegeneratePassword
+      tags:
+        - Account Linking
+      summary: Генерация нового пароля игроку
+      description: Генерирует новый случайный пароль для игрока и сохраняет его хэш вместо текущего.
+      security:
+        - internalToken: []
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          description: UUID игрока.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Пароль сгенерирован
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -541,6 +675,33 @@ components:
           type: string
           description: Id игрока у провайдера, подтверждённый ранее через `ConfirmLink`.
 
+    RequestPasswordResetRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Minecraft-логин игрока, для которого запрашивается сброс пароля.
+
+    ConfirmPasswordResetRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Токен сброса пароля, полученный в приоритетном привязанном аккаунте.
+        new_password:
+          type: string
+          description: Новый пароль аккаунта.
+
+    ChangePasswordRequest:
+      type: object
+      properties:
+        old_password:
+          type: string
+          description: Текущий пароль аккаунта.
+        new_password:
+          type: string
+          description: Новый пароль аккаунта.
+
     UnlinkRequest:
       type: object
       deprecated: true
@@ -563,6 +724,17 @@ components:
         username:
           type: string
           description: Текущий Minecraft-ник.
+
+    PasswordResponse:
+      type: object
+      required: [player_uuid, password]
+      properties:
+        player_uuid:
+          type: string
+          description: UUID игрока.
+        password:
+          type: string
+          description: Новый Minecraft-пароль.
 
     LinksListResponse:
       type: object
